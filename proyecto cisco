@@ -1,0 +1,114 @@
+from lcd_api import LcdApi
+from pico_i2c_lcd import I2cLcd
+import onewire
+from time import sleep
+from ds18x20 import DS18X20
+
+import binascii
+Q = 0
+ow = onewire.OneWire(Pin(4)) #Prepara GPIO4 para usar con OneWire
+sensor = DS18X20(ow) #define un sensor en ese pin
+direcciones = sensor.scan()  #Lee el ID del sensor conectado
+id=direcciones[0]
+#Pasa el ID a formato de texto e imprime
+idHex = binascii.hexlify(bytearray(id)) 
+print ("ID=",idHex)
+#Lee e imprime la temperatura cada 1 segundo
+evalv = Pin(15, Pin.OUT)
+evalv.value(0)
+
+sf = Pin(39 , Pin.IN)
+
+np = 0 # Numero de pulsos
+relog = Timer(0)
+
+def conteo(pin):#contador de pulsos
+    global np
+    np += 1
+
+def freq(timer):# temporizador
+    global np, Q#Q es igual al flujo
+    frec = np  #   z
+    z = frec / 7.5 # formula del flujo
+    Q += z/60
+    print ("litros consumidos: {int(Q)}")
+    lcd.clear()
+    lcd.move_to(0,0)
+    lcd.putstr("CAUDALIMETRO")
+    utime.sleep(0)
+    lcd.move_to(0,1)
+    lcd.putstr("Agua: ")
+    utime.sleep(0)
+    lcd.putstr(str(Q))
+    if Q>0.1:
+        evalv.value(1)
+    
+    utime.sleep(4)
+    np = 0 #repeticion de esta accion
+    return
+# F esequivalente a hz en este caso demarcando cada ocasion en la que se reinicia el codigo y en una toma de datos como
+
+
+
+
+
+
+
+
+
+
+
+I2C_ADDR = 0x27 #direccion del I2C
+I2C_NUM_FIL = 2
+I2C_NUM_COL = 16
+i2c = I2C(0,sda=Pin(21),scl=Pin(22),freq=100000) #Configuramos el I2C y los pines con base a la esp32, por ultimo la frecuencia de la comunicacion
+lcd = I2cLcd(i2c, I2C_ADDR, I2C_NUM_FIL, I2C_NUM_COL)
+reloj = [0x00,
+  0x00,
+  0x0E,
+  0x15,
+  0x17,
+  0x11,
+  0x0E,
+  0x00]
+def lcd_str(message,col,row):
+    lcd.move_to(col,row)
+    lcd.putstr(message)
+def main():
+    lcd.custom_char(0,bytearray(reloj))
+    while True:
+        sensor.convert_temp ()
+        
+        
+        temperatura = sensor.read_temp (id)
+        """
+        lcd.clear()
+        
+        lcd.putchar(chr(0))
+        utime.sleep(1)
+        """
+        lcd.clear()
+        lcd.move_to(0,0)
+        lcd.putstr("SD18b20   ")
+        utime.sleep(0)
+        lcd.move_to(0,1)
+        lcd.putstr("Es igual a: ")
+        utime.sleep(0)
+        
+        lcd.putstr(str(int(temperatura)))
+        
+        utime.sleep(1)
+        sf.irq(trigger = Pin.IRQ_RISING, handler = conteo)#Aqui se halla el inicio de la funcion de conteo donde se tomara un pulso
+        relog.init(mode=0, period=1, callback= freq)#aqui se toma en cuenta la funcion freq 
+
+
+        
+       
+        
+        
+        
+        
+
+
+if _name_ == '_start_':
+    main()
